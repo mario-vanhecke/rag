@@ -8,18 +8,33 @@ scope — `rag search --json` is the boundary; higher-level tools build on top.
 
 ---
 
+## Install
+
+**macOS / Linux:**
+
+```sh
+curl -fsSL https://github.com/mario-vanhecke/rag/raw/main/install.sh | sh
+```
+
+**Windows (PowerShell):**
+
+```powershell
+irm https://github.com/mario-vanhecke/rag/raw/main/install.ps1 | iex
+```
+
+**From source** (any platform with Rust toolchain):
+
+```sh
+cargo install --git https://github.com/mario-vanhecke/rag rag-cli
+```
+
+Optional: install [pandoc](https://pandoc.org/installing.html) if you want
+DOCX and PDF support (`brew install pandoc` / `apt install pandoc` /
+`winget install pandoc`).
+
 ## Quickstart
 
 ```sh
-# Install (from source)
-cargo build --release
-sudo mv target/release/rag /usr/local/bin/
-
-# Optional: pandoc if you want to index .docx and .pdf
-brew install pandoc        # macOS
-# apt install pandoc       # Debian/Ubuntu
-
-# Create a vault and index a folder
 cd ~/notes
 rag init .                 # creates ./.vault/
 rag add docs/              # registers each matching file as 'pending'
@@ -41,15 +56,6 @@ rag search "branching strategy"
   runtime deps beyond pandoc (optional, for DOCX/PDF).
 - **JSON output everywhere** — every command accepts `--json` and emits a
   documented schema.
-
-## What you don't get (in v1)
-
-No daemon, no `rag watch`, no `rag serve`, no LLM integration, no chat, no
-multi-vault commands, no move/rename detection, no GUI. See
-[the implementation plan](RAG_IMPLEMENTATION_PLAN.md) for the full list and
-the rationale.
-
----
 
 ## The twelve commands
 
