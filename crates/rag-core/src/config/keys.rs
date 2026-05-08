@@ -84,7 +84,7 @@ fn reject_derived(_: &Value) -> Result<(), String> {
 }
 
 pub fn lazy_default_supported() -> Value {
-    json!(["md", "markdown", "docx", "pdf", "txt"])
+    json!(["md", "markdown", "docx", "pdf", "epub", "txt"])
 }
 
 pub static KEYS: &[KeyDef] = &[
@@ -224,7 +224,7 @@ pub fn default_for(key: &str) -> Option<&'static Value> {
     static D_CHUNK_OVERLAP: once_cell_lite::Lazy<Value> =
         once_cell_lite::Lazy::new(|| Value::from(50u64));
     static D_FILES_SUPPORTED: once_cell_lite::Lazy<Value> =
-        once_cell_lite::Lazy::new(|| json!(["md", "markdown", "docx", "pdf", "txt"]));
+        once_cell_lite::Lazy::new(|| json!(["md", "markdown", "docx", "pdf", "epub", "txt"]));
     static D_FILES_EXCLUDED: once_cell_lite::Lazy<Value> = once_cell_lite::Lazy::new(|| json!([]));
     static D_FILES_SIZE_CAP: once_cell_lite::Lazy<Value> =
         once_cell_lite::Lazy::new(|| Value::from(52_428_800u64));

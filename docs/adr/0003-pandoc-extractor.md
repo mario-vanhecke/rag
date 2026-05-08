@@ -1,4 +1,4 @@
-# ADR 0003: Pandoc subprocess for DOCX/PDF extraction
+# ADR 0003: Pandoc subprocess for DOCX/PDF/EPUB extraction
 
 ## Status
 
@@ -6,18 +6,19 @@ Accepted. 2026-05-08.
 
 ## Context
 
-`rag` must turn DOCX and PDF inputs into something its chunker can consume
-(markdown). It also needs to detect image-only PDFs that have no extractable
-text, so they can be marked `needs_ocr` instead of indexed as empty.
+`rag` must turn DOCX, PDF, and EPUB inputs into something its chunker can
+consume (markdown). It also needs to detect image-only PDFs that have no
+extractable text, so they can be marked `needs_ocr` instead of indexed as
+empty.
 
-Native Rust DOCX/PDF parsers exist but have spotty coverage. The reference
-implementation across Unix toolchains is Pandoc.
+Native Rust parsers for these formats exist but have spotty coverage.
+The reference implementation across Unix toolchains is Pandoc.
 
 ## Decision
 
-Shell out to `pandoc` for `.docx` and `.pdf`. Locate the binary via `which`
-at extractor-construction time. If pandoc is missing, the extractor is not
-registered and any DOCX/PDF row gets `failed` with detail
+Shell out to `pandoc` for `.docx`, `.pdf`, and `.epub`. Locate the binary
+via `which` at extractor-construction time. If pandoc is missing, the
+extractor is not registered and any of these rows gets `failed` with detail
 `no_extractor_available`.
 
 ## Consequences

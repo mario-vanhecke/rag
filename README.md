@@ -29,7 +29,7 @@ cargo install --git https://github.com/mario-vanhecke/rag rag-cli
 ```
 
 Optional: install [pandoc](https://pandoc.org/installing.html) if you want
-DOCX and PDF support (`brew install pandoc` / `apt install pandoc` /
+DOCX, PDF, and EPUB support (`brew install pandoc` / `apt install pandoc` /
 `winget install pandoc`).
 
 ## Quickstart
@@ -143,7 +143,7 @@ Notable keys (see `rag config list --defaults` for the full list):
 | `chunking.target_tokens` | `400` | always |
 | `chunking.max_tokens` | `800` | always |
 | `chunking.overlap_tokens` | `50` | always |
-| `files.supported_extensions` | `["md","markdown","docx","pdf","txt"]` | always |
+| `files.supported_extensions` | `["md","markdown","docx","pdf","epub","txt"]` | always |
 | `files.excluded_extensions` | `[]` | always |
 | `files.size_cap_bytes` | `52428800` (50 MB) | always |
 | `retrieval.default_k` | `10` | always |

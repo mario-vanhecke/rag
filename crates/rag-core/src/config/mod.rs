@@ -123,7 +123,7 @@ impl Config {
             files: FilesConfig {
                 supported_extensions: as_string_array(&g(keys::FILES_SUPPORTED_EXTENSIONS))
                     .unwrap_or_else(|| {
-                        vec!["md", "markdown", "docx", "pdf", "txt"]
+                        vec!["md", "markdown", "docx", "pdf", "epub", "txt"]
                             .into_iter()
                             .map(String::from)
                             .collect()
