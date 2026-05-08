@@ -1,0 +1,64 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+env:
+  CARGO_TERM_COLOR: always
+  RUSTFLAGS: "-D warnings"
+
+jobs:
+  test:
+    name: test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+
+      - name: Format check
+        run: cargo fmt --all -- --check
+
+      - name: Clippy
+        run: cargo clippy --workspace --all-targets -- -D warnings
+
+      - name: Build (debug)
+        run: cargo build --workspace --all-targets
+
+      - name: Test
+        run: cargo test --workspace --all-targets
+
+      - name: Build (release)
+        run: cargo build --workspace --release
+
+      - name: Smoke test
+        shell: bash
+        run: |
+          set -euo pipefail
+          BIN="$PWD/target/release/rag"
+          T="$(mktemp -d)"
+          cd "$T"
+          "$BIN" init .
+          mkdir docs
+          printf "# Branching\n\n## Trunk\n\nWe use trunk-based development.\n" > docs/branching.md
+          printf "# Releases\n\nWe ship every two weeks.\n" > docs/release.md
+          "$BIN" add docs/
+          "$BIN" ls
+          "$BIN" status
+          # The full index path needs the embedder model (~2.2 GB); CI doesn't
+          # download it. Verify everything else end-to-end instead.
+          "$BIN" info --check
+          "$BIN" --json config list >/dev/null
+          "$BIN" --json status >/dev/null

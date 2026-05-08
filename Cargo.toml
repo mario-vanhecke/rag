@@ -1,0 +1,51 @@
+[workspace]
+resolver = "2"
+members = ["crates/rag-core", "crates/rag-cli"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.75"
+license = "MIT"
+authors = ["rag contributors"]
+
+[workspace.dependencies]
+rag-core = { path = "crates/rag-core" }
+
+# Shared deps
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+thiserror = "1.0"
+anyhow = "1.0"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+chrono = { version = "0.4", features = ["serde"] }
+uuid = { version = "1.10", features = ["v7", "serde"] }
+sha2 = "0.10"
+walkdir = "2.5"
+ignore = "0.4"
+which = "6.0"
+fs2 = "0.4"
+pulldown-cmark = "0.10"
+rusqlite = { version = "0.31", features = ["bundled", "functions"] }
+sqlite-vec = "0.1"
+zerocopy = "0.7"
+
+# CLI deps
+clap = { version = "4.5", features = ["derive", "cargo"] }
+tabled = "0.15"
+indicatif = "0.17"
+colored = "2.1"
+glob = "0.3"
+
+# Embedder deps
+candle-core = "0.8"
+candle-nn = "0.8"
+candle-transformers = "0.8"
+tokenizers = { version = "0.20", default-features = false, features = ["onig"] }
+ureq = { version = "2.12", features = ["tls"] }
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
+strip = true
