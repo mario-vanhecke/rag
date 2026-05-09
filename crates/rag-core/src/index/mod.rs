@@ -79,6 +79,38 @@ impl Outcome {
     }
 }
 
+/// Convert a per-file processing error into a `failed` FileResult so one bad
+/// file doesn't abort the whole index pass. Writes the failure to the DB so
+/// subsequent runs skip the row unless `--retry-failed` is passed.
+///
+/// Best-effort: if writing the failure also errors (e.g. real DB corruption),
+/// we propagate THAT — continuing isn't safe at that point.
+fn per_file_failure(
+    vault: &Vault,
+    row: &crate::registry::FileRow,
+    err: &Error,
+) -> Result<FileResult> {
+    let detail = "internal_error";
+    let message = err.to_string();
+    tracing::warn!("{}: {}", row.path, message);
+    pipeline::write_status_only(
+        vault,
+        row,
+        crate::registry::FileStatus::Failed,
+        Some(detail),
+        Some(&message),
+        row.status == crate::registry::FileStatus::Indexed,
+    )?;
+    Ok(FileResult {
+        path: row.path.clone(),
+        outcome: Outcome::Failed,
+        chunks_added: 0,
+        chunks_replaced: 0,
+        status_detail: Some(detail.to_string()),
+        status_note: Some(message),
+    })
+}
+
 pub fn run_index(
     vault: &mut Vault,
     embedder: &dyn Embedder,
@@ -154,7 +186,10 @@ pub fn run_index(
             if let Some(p) = progress {
                 p(i, total, &row.path);
             }
-            let res = reconcile::process_one(vault, row, extractors, embedder, opts)?;
+            let res = match reconcile::process_one(vault, row, extractors, embedder, opts) {
+                Ok(r) => r,
+                Err(e) => per_file_failure(vault, row, &e)?,
+            };
             res.outcome.tally(&mut summary);
             results.push(res);
         }
@@ -286,7 +321,11 @@ fn run_index_parallel(
             if let Some(p) = progress {
                 p(processed, total, &task.row.path);
             }
-            let result = reconcile::finalize(vault, embedder, task, extracted)?;
+            let row_for_err = task.row.clone();
+            let result = match reconcile::finalize(vault, embedder, task, extracted) {
+                Ok(r) => r,
+                Err(e) => per_file_failure(vault, &row_for_err, &e)?,
+            };
             result.outcome.tally(summary);
             results.push(result);
             processed += 1;
