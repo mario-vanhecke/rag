@@ -45,7 +45,7 @@ pub struct PandocExtractor {
 
 impl PandocExtractor {
     /// Construct iff `pandoc` is on PATH. If not, returns None and the index
-    /// pipeline will treat docx/pdf/epub as failed with `pandoc_not_found`.
+    /// pipeline will treat docx/epub as failed with `no_extractor_available`.
     pub fn try_new() -> Option<Self> {
         which::which("pandoc").ok().map(|binary| Self { binary })
     }
@@ -53,7 +53,9 @@ impl PandocExtractor {
 
 impl Extractor for PandocExtractor {
     fn extensions(&self) -> &[&'static str] {
-        &["docx", "pdf", "epub"]
+        // PDF is handled by `pdf::PdfExtractor` (pure Rust). Pandoc cannot
+        // read PDF — it can only write it.
+        &["docx", "epub"]
     }
 
     fn extract(&self, path: &Path) -> ExtractionResult {
@@ -84,27 +86,6 @@ impl Extractor for PandocExtractor {
             };
         }
         let markdown = strip_anchor_spans(&String::from_utf8_lossy(&output.stdout));
-
-        // Heuristic: a PDF that pandoc returns with extremely sparse text is
-        // probably image-only and needs OCR.
-        let ext = path
-            .extension()
-            .and_then(|e| e.to_str())
-            .map(|e| e.to_lowercase())
-            .unwrap_or_default();
-        if ext == "pdf" {
-            let chars = markdown.chars().filter(|c| !c.is_whitespace()).count();
-            // Crude page estimate: pandoc loses page boundaries when it
-            // converts to markdown, so we approximate from input file size.
-            let pages_est = (path
-                .metadata()
-                .map(|m| m.len() as usize / 5000)
-                .unwrap_or(1))
-            .max(1);
-            if chars < 100 * pages_est {
-                return ExtractionResult::NeedsOcr;
-            }
-        }
 
         ExtractionResult::Ok(ExtractedDocument {
             markdown,

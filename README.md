@@ -28,9 +28,16 @@ irm https://github.com/mario-vanhecke/rag/raw/main/install.ps1 | iex
 cargo install --git https://github.com/mario-vanhecke/rag rag-cli
 ```
 
-Optional: install [pandoc](https://pandoc.org/installing.html) if you want
-DOCX, PDF, and EPUB support (`brew install pandoc` / `apt install pandoc` /
-`winget install pandoc`).
+**Optional dependencies** (the binary works without them, but adding them
+expands what `rag` can index):
+
+- [`pandoc`](https://pandoc.org/installing.html) — DOCX and EPUB support.
+  `brew install pandoc` / `apt install pandoc` / `winget install pandoc`.
+- [`poppler`](https://poppler.freedesktop.org) — higher-quality PDF
+  extraction. Without it, `rag` falls back to the bundled pure-Rust
+  pdf-extract crate, which works for most PDFs but panics on a few unusual
+  font encodings. With poppler, all PDFs go through `pdftotext`.
+  `brew install poppler` / `apt install poppler-utils`.
 
 ## Quickstart
 
