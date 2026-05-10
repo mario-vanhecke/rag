@@ -1,3 +1,4 @@
+use rag_core::vault_core::Error as VaultError;
 use rag_core::Error;
 
 #[allow(dead_code)]
@@ -14,11 +15,15 @@ pub const SUBPROCESS_ERROR: i32 = 8;
 
 pub fn for_error(e: &Error) -> i32 {
     match e {
-        Error::NoVault { .. } => NO_VAULT,
-        Error::SchemaMismatch { .. } => VAULT_CORRUPTION,
+        Error::Vault(v) => match v {
+            VaultError::NoState { .. } => NO_VAULT,
+            VaultError::SchemaMismatch { .. } => VAULT_CORRUPTION,
+            VaultError::LockContention => LOCK_CONTENTION,
+            VaultError::Io(_) => IO_ERROR,
+            _ => GENERAL,
+        },
         Error::Config(_) => CONFIG_ERROR,
         Error::Io(_) => IO_ERROR,
-        Error::LockContention => LOCK_CONTENTION,
         Error::Subprocess(_) => SUBPROCESS_ERROR,
         Error::Invariant(_) => VAULT_CORRUPTION,
         _ => GENERAL,

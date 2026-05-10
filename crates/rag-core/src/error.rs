@@ -1,18 +1,14 @@
-use std::path::PathBuf;
 use thiserror::Error;
 
 pub type Result<T> = std::result::Result<T, Error>;
 
 #[derive(Debug, Error)]
 pub enum Error {
-    #[error("no vault found in {start} or any parent directory")]
-    NoVault { start: PathBuf },
-
-    #[error("vault already exists at {path}")]
-    VaultExists { path: PathBuf },
-
-    #[error("schema version mismatch: db={db}, expected={expected}")]
-    SchemaMismatch { db: u32, expected: u32 },
+    /// Anything that flows up from `vault-core` (io, sqlite, lock contention,
+    /// no-vault, schema mismatch, invalid path, …) lands here. Callers that
+    /// need to discriminate can match on the inner `vault_core::Error`.
+    #[error(transparent)]
+    Vault(#[from] vault_core::Error),
 
     #[error("io: {0}")]
     Io(#[from] std::io::Error),
@@ -26,9 +22,6 @@ pub enum Error {
     #[error("config: {0}")]
     Config(String),
 
-    #[error("invalid path: {0}")]
-    InvalidPath(String),
-
     #[error("path not in registry: {0}")]
     PathNotInRegistry(String),
 
@@ -40,9 +33,6 @@ pub enum Error {
 
     #[error("embedder: {0}")]
     Embedder(String),
-
-    #[error("lock contention: another rag index is running")]
-    LockContention,
 
     #[error("invariant violation: {0}")]
     Invariant(String),

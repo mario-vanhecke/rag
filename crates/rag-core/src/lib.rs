@@ -12,10 +12,12 @@ pub mod config;
 pub mod db;
 pub mod embed;
 pub mod error;
-pub mod extract;
-pub mod ignore;
 pub mod index;
 pub mod info;
+
+/// Re-export the shared extractor crate so existing call sites that say
+/// `rag_core::extract::*` keep compiling.
+pub use extract_core as extract;
 pub mod registry;
 pub mod search;
 pub mod status;
@@ -27,3 +29,6 @@ pub use vault::Vault;
 // Re-export rusqlite so consumers (rag-cli) can use the same version without
 // pinning it independently in their Cargo.toml.
 pub use rusqlite;
+
+// Re-export vault-core too so consumers see one coherent surface.
+pub use vault_core;

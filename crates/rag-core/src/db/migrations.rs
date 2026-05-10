@@ -1,15 +1,13 @@
+//! rag's schema migrations. The runner itself lives in `vault-core`.
+
 use crate::error::Result;
-use rusqlite::{params, Connection};
+use rusqlite::Connection;
+use vault_core::Migration;
 
 pub const SCHEMA_VERSION: u32 = 2;
 
 const MIGRATION_001: &str = include_str!("migrations/001_initial.sql");
 const MIGRATION_002: &str = include_str!("migrations/002_drop_chunks_unique_idx.sql");
-
-pub struct Migration {
-    pub version: u32,
-    pub sql: &'static str,
-}
 
 const MIGRATIONS: &[Migration] = &[
     Migration {
@@ -22,55 +20,21 @@ const MIGRATIONS: &[Migration] = &[
     },
 ];
 
-/// Apply all pending migrations. Returns the list of versions applied.
+/// Apply all pending rag migrations. Forwards to `vault_core::apply_pending`
+/// with rag's specific migration list.
 pub fn apply_pending(conn: &mut Connection) -> Result<Vec<u32>> {
-    conn.execute_batch(
-        "CREATE TABLE IF NOT EXISTS schema_migrations (
-            version    INTEGER PRIMARY KEY,
-            applied_at INTEGER NOT NULL
-         );",
-    )?;
-
-    let applied: std::collections::HashSet<u32> = conn
-        .prepare("SELECT version FROM schema_migrations")?
-        .query_map([], |r| r.get::<_, u32>(0))?
-        .collect::<std::result::Result<_, _>>()?;
-
-    let now = chrono::Utc::now().timestamp_millis();
-
-    let mut newly_applied = Vec::new();
-    for m in MIGRATIONS {
-        if applied.contains(&m.version) {
-            continue;
-        }
-        let tx = conn.transaction()?;
-        tx.execute_batch(m.sql)?;
-        // Each migration's body inserts its own row, but use INSERT OR IGNORE
-        // here as a belt-and-suspenders guarantee.
-        tx.execute(
-            "INSERT OR IGNORE INTO schema_migrations (version, applied_at) VALUES (?1, ?2)",
-            params![m.version, now],
-        )?;
-        tx.commit()?;
-        newly_applied.push(m.version);
-    }
-
-    Ok(newly_applied)
+    Ok(vault_core::apply_pending(conn, MIGRATIONS)?)
 }
 
 pub fn current_version(conn: &Connection) -> Result<u32> {
-    let v: Option<u32> = conn
-        .query_row("SELECT MAX(version) FROM schema_migrations", [], |r| {
-            r.get(0)
-        })
-        .ok();
-    Ok(v.unwrap_or(0))
+    Ok(vault_core::current_version(conn)?)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::db::connection::open_in_memory;
+    use rusqlite::params;
+    use vault_core::open_in_memory;
 
     #[test]
     fn migrations_apply_cleanly() {
@@ -103,17 +67,14 @@ mod tests {
 
     #[test]
     fn migration_002_runs_against_v1_vault() {
-        // Simulate a vault created at schema_version=1 (with the old unique
-        // index) and verify migration 002 applies cleanly.
         let mut conn = open_in_memory().unwrap();
-        // Apply only migration 001 by hand.
+        // Apply only migration 001 by hand (simulating a v0.1.0 vault).
         conn.execute_batch(MIGRATION_001).unwrap();
         conn.execute(
             "INSERT INTO schema_migrations (version, applied_at) VALUES (1, 0)",
             [],
         )
         .unwrap();
-        // Confirm the old index is present.
         let exists: bool = conn
             .query_row(
                 "SELECT 1 FROM sqlite_master WHERE name = 'idx_chunks_file_hash'",
@@ -123,7 +84,6 @@ mod tests {
             .unwrap_or(false);
         assert!(exists, "v1 vaults should have idx_chunks_file_hash");
 
-        // Now run apply_pending — should bring it to v2.
         let applied = apply_pending(&mut conn).unwrap();
         assert_eq!(applied, vec![2]);
         let still_there: bool = conn

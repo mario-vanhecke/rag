@@ -1,8 +1,9 @@
 use crate::config::Config;
-use crate::db::{connection::open_connection, migrations};
+use crate::db::migrations;
 use crate::error::{Error, Result};
 use rusqlite::{params, Connection};
-use std::path::{Component, Path, PathBuf};
+use std::path::{Path, PathBuf};
+use vault_core::path as vpath;
 
 pub const STATE_DIR: &str = ".vault";
 pub const DB_FILE: &str = "vault";
@@ -22,26 +23,8 @@ pub struct Vault {
 impl Vault {
     /// Walk up from `start` to find a `.vault/` directory, then open the vault.
     pub fn discover(start: &Path) -> Result<Self> {
-        let start = if start.is_absolute() {
-            start.to_path_buf()
-        } else {
-            std::env::current_dir()?.join(start)
-        };
-        let mut cur = start.as_path();
-        loop {
-            let candidate = cur.join(STATE_DIR);
-            if candidate.is_dir() {
-                return Self::open(cur);
-            }
-            match cur.parent() {
-                Some(p) => cur = p,
-                None => {
-                    return Err(Error::NoVault {
-                        start: start.clone(),
-                    });
-                }
-            }
-        }
+        let root = vpath::discover_state_root(start, STATE_DIR)?;
+        Self::open(&root)
     }
 
     /// Open an existing vault rooted at `vault_root` (the parent of `.vault/`).
@@ -49,12 +32,13 @@ impl Vault {
         let root = vault_root.canonicalize()?;
         let state_dir = root.join(STATE_DIR);
         if !state_dir.is_dir() {
-            return Err(Error::NoVault {
+            return Err(Error::Vault(vault_core::Error::NoState {
+                name: STATE_DIR.to_string(),
                 start: root.clone(),
-            });
+            }));
         }
         let db_path = state_dir.join(DB_FILE);
-        let mut conn = open_connection(&db_path)?;
+        let mut conn = vault_core::open_connection(&db_path)?;
         migrations::apply_pending(&mut conn)?;
         let config = Config::load(&conn)?;
         Ok(Self {
@@ -73,16 +57,16 @@ impl Vault {
         let state_dir = root.join(STATE_DIR);
 
         if state_dir.exists() && !force {
-            return Err(Error::VaultExists {
+            return Err(Error::Vault(vault_core::Error::StateExists {
                 path: state_dir.clone(),
-            });
+            }));
         }
         std::fs::create_dir_all(&state_dir)?;
         std::fs::create_dir_all(state_dir.join(CACHE_DIR).join(MODELS_DIR))?;
         std::fs::create_dir_all(state_dir.join(LOGS_DIR))?;
 
         let db_path = state_dir.join(DB_FILE);
-        let mut conn = open_connection(&db_path)?;
+        let mut conn = vault_core::open_connection(&db_path)?;
         migrations::apply_pending(&mut conn)?;
 
         let now = chrono::Utc::now().timestamp_millis();
@@ -136,68 +120,10 @@ impl Vault {
     /// Convert any path (absolute or relative to cwd) into a vault-root-relative
     /// path with forward slashes. Errors if the path escapes the vault.
     pub fn relativize(&self, path: &Path) -> Result<PathBuf> {
-        let abs = if path.is_absolute() {
-            path.to_path_buf()
-        } else {
-            std::env::current_dir()?.join(path)
-        };
-        // We don't require the path to exist (e.g. for `rag rm`).
-        let abs = match abs.canonicalize() {
-            Ok(p) => p,
-            Err(_) => normalize_logical(&abs),
-        };
-        let rel = abs.strip_prefix(&self.root).map_err(|_| {
-            Error::InvalidPath(format!(
-                "{} is outside vault {}",
-                abs.display(),
-                self.root.display()
-            ))
-        })?;
-        Ok(to_forward_slashes(rel))
+        Ok(vpath::relativize(&self.root, path)?)
     }
 
     pub fn absolutize(&self, rel_path: &str) -> PathBuf {
-        let mut p = self.root.clone();
-        for comp in rel_path.split('/') {
-            if comp.is_empty() || comp == "." {
-                continue;
-            }
-            p.push(comp);
-        }
-        p
+        vpath::absolutize(&self.root, rel_path)
     }
-}
-
-fn to_forward_slashes(p: &Path) -> PathBuf {
-    let mut out = String::new();
-    let mut first = true;
-    for c in p.components() {
-        let s = match c {
-            Component::Normal(s) => s.to_string_lossy().into_owned(),
-            Component::CurDir => continue,
-            Component::ParentDir => "..".to_string(),
-            Component::RootDir => continue,
-            Component::Prefix(p) => p.as_os_str().to_string_lossy().into_owned(),
-        };
-        if !first {
-            out.push('/');
-        }
-        out.push_str(&s);
-        first = false;
-    }
-    PathBuf::from(out)
-}
-
-fn normalize_logical(p: &Path) -> PathBuf {
-    let mut out = PathBuf::new();
-    for c in p.components() {
-        match c {
-            Component::ParentDir => {
-                out.pop();
-            }
-            Component::CurDir => {}
-            other => out.push(other.as_os_str()),
-        }
-    }
-    out
 }

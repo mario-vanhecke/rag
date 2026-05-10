@@ -718,6 +718,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "extract-core"
+version = "0.1.4"
+dependencies = [
+ "pdf-extract",
+ "serde",
+ "serde_json",
+ "which",
+]
+
+[[package]]
 name = "fallible-iterator"
 version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2123,25 +2133,22 @@ dependencies = [
  "candle-transformers",
  "chrono",
  "crossbeam-channel",
+ "extract-core",
  "filetime",
- "fs2",
  "glob",
- "ignore",
- "pdf-extract",
  "pulldown-cmark",
  "rusqlite",
  "serde",
  "serde_json",
  "sha2",
- "sqlite-vec",
  "tempfile",
  "thiserror",
  "tokenizers",
  "tracing",
  "ureq",
  "uuid",
+ "vault-core",
  "walkdir",
- "which",
  "zerocopy 0.7.35",
 ]
 
@@ -3065,6 +3072,23 @@ name = "valuable"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ba73ea9cf16a25df0c8caa16c51acb937d5712a8429db78a3ee29d5dcacd3a65"
+
+[[package]]
+name = "vault-core"
+version = "0.1.4"
+dependencies = [
+ "chrono",
+ "fs2",
+ "ignore",
+ "rusqlite",
+ "serde",
+ "serde_json",
+ "sqlite-vec",
+ "tempfile",
+ "thiserror",
+ "tracing",
+ "walkdir",
+]
 
 [[package]]
 name = "vcpkg"

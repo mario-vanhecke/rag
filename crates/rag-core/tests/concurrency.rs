@@ -13,7 +13,7 @@ use std::time::Duration;
 
 #[test]
 fn no_wait_loser_returns_lock_contention() {
-    use fs2::FileExt;
+    use rag_core::vault_core::FileExt;
     use std::fs::OpenOptions;
 
     let dir = tempfile::tempdir().unwrap();
@@ -65,7 +65,7 @@ fn no_wait_loser_returns_lock_contention() {
 
     let res = h.join().unwrap();
     match res {
-        Err(rag_core::Error::LockContention) => {} // expected
+        Err(rag_core::Error::Vault(rag_core::vault_core::Error::LockContention)) => {} // expected
         other => panic!("expected LockContention, got {other:?}"),
     }
 

@@ -5,11 +5,9 @@ use crate::embed::Embedder;
 use crate::error::{Error, Result};
 use crate::extract::ExtractorRegistry;
 use crate::vault::Vault;
-use fs2::FileExt;
+use vault_core::FileExt;
 use serde::{Deserialize, Serialize};
-use std::fs::OpenOptions;
 use std::path::PathBuf;
-use std::time::Duration;
 
 #[derive(Debug, Clone, Default)]
 pub struct IndexOptions {
@@ -125,36 +123,14 @@ pub fn run_index(
         )));
     }
 
-    // Acquire vault-level file lock
-    let lock_path = vault.index_lock_path();
-    let lock_file = OpenOptions::new()
-        .create(true)
-        .truncate(false)
-        .read(true)
-        .write(true)
-        .open(&lock_path)?;
-
-    if opts.no_wait {
-        lock_file
-            .try_lock_exclusive()
-            .map_err(|_| Error::LockContention)?;
-    } else {
-        // We don't have a true bounded blocking lock from fs2; emulate with
-        // try_lock_exclusive in a short loop bounded by `wait_seconds`.
-        let deadline =
-            std::time::Instant::now() + Duration::from_secs(opts.wait_seconds.unwrap_or(60));
-        loop {
-            match lock_file.try_lock_exclusive() {
-                Ok(()) => break,
-                Err(_) => {
-                    if std::time::Instant::now() >= deadline {
-                        return Err(Error::LockContention);
-                    }
-                    std::thread::sleep(Duration::from_millis(200));
-                }
-            }
-        }
-    }
+    // Acquire vault-level file lock via vault-core helper.
+    let lock_file = vault_core::acquire_lock(
+        &vault.index_lock_path(),
+        &vault_core::LockOptions {
+            no_wait: opts.no_wait,
+            wait_seconds: opts.wait_seconds,
+        },
+    )?;
 
     let started_at = chrono::Utc::now().timestamp_millis();
 

@@ -1,5 +1,5 @@
 use crate::error::{Error, Result};
-use crate::ignore::VaultIgnore;
+use vault_core::VaultIgnore;
 use crate::vault::Vault;
 use rusqlite::params;
 use serde::{Deserialize, Serialize};
@@ -42,7 +42,7 @@ pub fn add_paths(vault: &Vault, paths: &[PathBuf], opts: &AddOptions) -> Result<
     } else if opts.no_ignore {
         VaultIgnore::defaults_only(&vault.root)?
     } else {
-        VaultIgnore::load(&vault.root, vault.config.files.respect_vaultignore)?
+        VaultIgnore::load(&vault.root, ".vaultignore", vault.config.files.respect_vaultignore)?
     };
 
     let supported: std::collections::HashSet<String> = vault
@@ -63,10 +63,10 @@ pub fn add_paths(vault: &Vault, paths: &[PathBuf], opts: &AddOptions) -> Result<
             std::env::current_dir()?.join(input)
         };
         if !abs0.exists() {
-            return Err(Error::InvalidPath(format!(
+            return Err(Error::Vault(vault_core::Error::InvalidPath(format!(
                 "{} does not exist",
                 input.display()
-            )));
+            ))));
         }
         // Canonicalize so that ignore-matcher comparisons against the canonical
         // vault root succeed (e.g. macOS `/var` -> `/private/var` symlink).

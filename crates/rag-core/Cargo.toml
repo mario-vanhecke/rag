@@ -6,6 +6,8 @@ rust-version.workspace = true
 license.workspace = true
 
 [dependencies]
+vault-core.workspace = true
+extract-core.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true
@@ -14,13 +16,8 @@ chrono.workspace = true
 uuid.workspace = true
 sha2.workspace = true
 walkdir.workspace = true
-ignore.workspace = true
-which.workspace = true
-fs2.workspace = true
 pulldown-cmark.workspace = true
-pdf-extract.workspace = true
 rusqlite.workspace = true
-sqlite-vec.workspace = true
 zerocopy.workspace = true
 glob.workspace = true
 

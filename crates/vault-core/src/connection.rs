@@ -5,13 +5,12 @@ use std::sync::Once;
 
 static SQLITE_VEC_INIT: Once = Once::new();
 
+/// Register sqlite-vec as a SQLite auto-extension so every connection opened
+/// thereafter in this process gets it loaded. Safe (and cheap) for tools that
+/// don't use vector search — the extension just registers its functions and
+/// never gets called.
 fn ensure_sqlite_vec_extension() {
     SQLITE_VEC_INIT.call_once(|| {
-        // Register sqlite-vec as a SQLite auto-extension so every connection
-        // opened thereafter in this process gets it loaded. `sqlite3_vec_init`
-        // is declared as `unsafe extern "C" fn()` in the binding; the real
-        // signature matches what `sqlite3_auto_extension` expects, so we
-        // transmute the function pointer at the call site.
         type AutoExtFn = unsafe extern "C" fn(
             *mut rusqlite::ffi::sqlite3,
             *mut *const std::os::raw::c_char,
@@ -26,11 +25,12 @@ fn ensure_sqlite_vec_extension() {
     });
 }
 
-/// Open (or create) a SQLite database at `path` with the conventions `rag` requires:
+/// Open a SQLite database at `path` with the conventions tools share:
 ///   * foreign keys ON
 ///   * WAL journal mode
-///   * busy_timeout = 5000ms
-///   * sqlite-vec extension loaded
+///   * synchronous = NORMAL
+///   * busy_timeout = 5000 ms
+///   * sqlite-vec extension auto-loaded for every connection in this process
 pub fn open_connection<P: AsRef<Path>>(path: P) -> Result<Connection> {
     ensure_sqlite_vec_extension();
     let conn = Connection::open(path.as_ref())?;
