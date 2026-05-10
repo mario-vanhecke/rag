@@ -10,6 +10,18 @@ scope — `rag search --json` is the boundary; higher-level tools build on top.
 
 ## Install
 
+### Homebrew (macOS / Linux) — recommended
+
+```sh
+brew install mario-vanhecke/rag/rag
+```
+
+This auto-installs `pandoc` (for DOCX/EPUB) and `poppler` (for high-quality
+PDF extraction via `pdftotext`) as recommended dependencies. Skip them with
+`--without-pandoc` / `--without-poppler` if you don't want them.
+
+### One-line installer (no Homebrew)
+
 **macOS / Linux:**
 
 ```sh
@@ -22,22 +34,55 @@ curl -fsSL https://github.com/mario-vanhecke/rag/raw/main/install.sh | sh
 irm https://github.com/mario-vanhecke/rag/raw/main/install.ps1 | iex
 ```
 
-**From source** (any platform with Rust toolchain):
+These install only the `rag` binary. To get DOCX/EPUB and best-quality PDF
+support, install `pandoc` and `poppler` separately — see the table below.
+
+### From source (any platform with Rust toolchain)
 
 ```sh
 cargo install --git https://github.com/mario-vanhecke/rag rag-cli
 ```
 
-**Optional dependencies** (the binary works without them, but adding them
-expands what `rag` can index):
+Add `--features metal` on Apple Silicon for ~9× faster embedding, or
+`--features cuda` on Linux with CUDA toolkit for NVIDIA acceleration.
 
-- [`pandoc`](https://pandoc.org/installing.html) — DOCX and EPUB support.
-  `brew install pandoc` / `apt install pandoc` / `winget install pandoc`.
-- [`poppler`](https://poppler.freedesktop.org) — higher-quality PDF
-  extraction. Without it, `rag` falls back to the bundled pure-Rust
-  pdf-extract crate, which works for most PDFs but panics on a few unusual
-  font encodings. With poppler, all PDFs go through `pdftotext`.
-  `brew install poppler` / `apt install poppler-utils`.
+---
+
+### What gets indexed by what
+
+| Format | Built-in | With `pandoc`     | With `poppler` (`pdftotext`) |
+|--------|----------|-------------------|------------------------------|
+| `.md` / `.markdown` | ✅ | — | — |
+| `.txt`              | ✅ | — | — |
+| `.docx`             | — | ✅ | — |
+| `.epub`             | — | ✅ | — |
+| `.pdf`              | ✅ (pure-Rust pdf-extract; some unusual fonts crash) | — | ✅ (recommended; handles everything pdf-extract can't) |
+
+The PDF extractor picks its backend at startup: if `pdftotext` is on PATH,
+it uses that. Otherwise it falls back to the bundled pure-Rust extractor.
+Both produce the same `ExtractionResult`; the difference is reliability on
+hard PDFs (image-heavy, unusual fonts, scanned scientific papers).
+
+### Manual install instructions for the optional tools
+
+| Tool      | macOS                    | Debian/Ubuntu              | Windows                   |
+|-----------|--------------------------|----------------------------|---------------------------|
+| `pandoc`  | `brew install pandoc`    | `apt install pandoc`       | `winget install pandoc`   |
+| `poppler` | `brew install poppler`   | `apt install poppler-utils`| `choco install poppler`   |
+
+### Verifying your setup
+
+```sh
+$ rag --version
+rag 0.1.4
+$ which pandoc pdftotext      # both present means you're set
+/opt/homebrew/bin/pandoc
+/opt/homebrew/bin/pdftotext
+```
+
+You can also check after an index run: failed PDFs include a `status_note`
+that says either *"Install poppler..."* (you're on the pure-Rust fallback)
+or a real pdftotext error message (you're on the high-quality path).
 
 ## Quickstart
 
